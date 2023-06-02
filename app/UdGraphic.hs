@@ -150,32 +150,38 @@ data Comanda   = Avança Distancia
 -- Problema 8
 -- Pas de comandes a lines a pintar per GL graphics
 
+-- Tipus "EstatLlapis" auxiliar per determinar l'estat del llapis en cada comanda
 data EstatLlapis = EstatLlapis Llapis Angle Pnt
 
+-- Predicat auxiliar "polar" que ens calcula la desviació amb l'angle
 polar :: Angle -> Pnt
 polar a = Pnt (cos rad) (sin rad)
     where
         rad = a * pi / 180
 
+-- Predicat auxiliar "executeLn" que ens retorna les línies i es va actualitzant l'estat del llapis
 executeLn :: Comanda -> EstatLlapis -> ([Ln], EstatLlapis)
-executeLn (Avança d) (EstatLlapis color angle inici) = (if color == Transparent
-                                          then []
-                                          else [Ln color inici final], EstatLlapis color angle final)
+executeLn (Avança d) (EstatLlapis color angle inici) = (if color == Transparent -- Si el color del llapis és "Transparent" llavors no es dibuixa res
+                                          then [] 
+                                          else [Ln color inici final], EstatLlapis color angle final) -- Altrament, traça la línia amb totes les dades proporcionades
                                       where
-                                          final = inici + scalar d * polar angle
-executeLn Para estat = ([], estat)
-executeLn (Gira a) (EstatLlapis color angle inici) = ([], EstatLlapis color (angle-a) inici)
+                                          final = inici + scalar d * polar angle -- Càlcul del punt final amb la desviació corresponent (si es que en té)
+executeLn Para estat = ([], estat) -- Si la comanda és un Para simplement no fa res
+executeLn (Gira a) (EstatLlapis color angle inici) = ([], EstatLlapis color (angle-a) inici) -- S'agafa l'angle "a" i gira respecte l'angle anteriorment utilitzat
 
-executeLn (com1 :#: com2) estat = (linies, estat2)
+-- Les comandes compostes funcionen de forma que s'agafen les línies i l'estat del llapis al executar la primera comanda (com1) i es passa a la següent (com2)
+executeLn (com1 :#: com2) estat = (linies, estat2) 
     where
         (linies1, estat1) = executeLn com1 estat
         (linies2, estat2) = executeLn com2 estat1
-        linies = linies1 ++ linies2
-executeLn (CanviaColor color) (EstatLlapis _ angle inici) = ([], EstatLlapis color angle inici)
+        linies = linies1 ++ linies2 -- Finalment es concatenen les línies que donaran de resultat haver executat com1 i com2 justament després
+executeLn (CanviaColor color) (EstatLlapis _ angle inici) = ([], EstatLlapis color angle inici) -- Actualitza el color del llapis
+-- El funcionament de "Branca" és simple: s'executen les comandes que venen després del "Branca", retorna les línies, però l'estat del llapis es deixa en l'estat en que es va començar la "Branca"
 executeLn (Branca com) estat = (linies, estat)
     where
         (linies, _) = executeLn com estat
 
+-- Execute com a tal, que retorna les línies que donaran de resultat el dibuix aplicat amb les comandes introduïdes, comença en el punt (0,0) i amb llapis negre
 execute :: Comanda -> [Ln]
 execute c  =  linies
     where
