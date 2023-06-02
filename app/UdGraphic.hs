@@ -1,7 +1,10 @@
 module UdGraphic (
     Comanda(..),
     Distancia,
-    Angle
+    Angle,
+    Llapis(..), blau, vermell,
+    display,
+    execute
     )
     where
 
@@ -138,14 +141,45 @@ type Distancia = Float
 data Comanda   = Avança Distancia
                | Gira Angle
                | Comanda :#: Comanda
+               | Para
+               | CanviaColor Llapis
+               | Branca Comanda
+                deriving (Eq,Show)
 
 
 -- Problema 8
 -- Pas de comandes a lines a pintar per GL graphics
 
-execute :: Comanda -> [Ln]
-execute c  =  undefined
+data EstatLlapis = EstatLlapis Llapis Angle Pnt
 
+polar :: Angle -> Pnt
+polar a = Pnt (cos rad) (sin rad)
+    where
+        rad = a * pi / 180
+
+executeLn :: Comanda -> EstatLlapis -> ([Ln], EstatLlapis)
+executeLn (Avança d) (EstatLlapis color angle inici) = (if color == Transparent
+                                          then []
+                                          else [Ln color inici final], EstatLlapis color angle final)
+                                      where
+                                          final = inici + scalar d * polar angle
+executeLn Para estat = ([], estat)
+executeLn (Gira a) (EstatLlapis color angle inici) = ([], EstatLlapis color (angle-a) inici)
+
+executeLn (com1 :#: com2) estat = (linies, estat2)
+    where
+        (linies1, estat1) = executeLn com1 estat
+        (linies2, estat2) = executeLn com2 estat1
+        linies = linies1 ++ linies2
+executeLn (CanviaColor color) (EstatLlapis _ angle inici) = ([], EstatLlapis color angle inici)
+executeLn (Branca com) estat = (linies, estat)
+    where
+        (linies, _) = executeLn com estat
+
+execute :: Comanda -> [Ln]
+execute c  =  linies
+    where
+        (linies, _) = executeLn c (EstatLlapis negre 0 (Pnt 0 0))
 
 -- Rescales all points in a list of lines
 --  from an arbitrary scale
